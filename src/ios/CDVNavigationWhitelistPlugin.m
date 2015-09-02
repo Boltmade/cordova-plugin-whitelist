@@ -73,14 +73,48 @@
 
 @synthesize whitelist;
 
+- (void)parseSettingsWithParser:(NSObject <NSXMLParserDelegate>*)delegate
+{
+    // read from config.xml in the app bundle
+    NSString* path = [[NSBundle mainBundle] pathForResource:@"config" ofType:@"xml"];
+
+    if (![[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        NSAssert(NO, @"ERROR: config.xml does not exist. Please run cordova-ios/bin/cordova_plist_to_config_xml path/to/project.");
+        return;
+    }
+
+    NSURL* url = [NSURL fileURLWithPath:path];
+
+    NSXMLParser *configParser = [[NSXMLParser alloc] initWithContentsOfURL:url];
+    if (configParser == nil) {
+        NSLog(@"Failed to initialize XML parser.");
+        return;
+    }
+    [configParser setDelegate:((id < NSXMLParserDelegate >)delegate)];
+    [configParser parse];
+}
+
 - (void)setViewController:(UIViewController *)viewController
 {
     if ([viewController isKindOfClass:[CDVViewController class]]) {
-        CDVWhitelistConfigParser *whitelistConfigParser = [[CDVWhitelistConfigParser alloc] init];
-        [(CDVViewController *)viewController parseSettingsWithParser:whitelistConfigParser];
+        CDVNavigationWhitelistConfigParser *whitelistConfigParser = [[CDVNavigationWhitelistConfigParser alloc] init];
+        [self parseSettingsWithParser:whitelistConfigParser];
         self.whitelist = [[CDVWhitelist alloc] initWithArray:whitelistConfigParser.whitelistHosts];
     }
 }
+
+ - (BOOL)shouldOverrideLoadWithRequest:(NSURLRequest*)request navigationType:(int)type
+ {
+    NSURL *url = request.URL;
+    if ([self.whitelist URLIsAllowed:url]) {
+     return NO;
+    } else {
+      if ([[UIApplication sharedApplication] canOpenURL:url]) {
+        [[UIApplication sharedApplication] openURL:url];
+      }
+      return YES;
+    }
+ }
 
 - (BOOL)shouldAllowNavigationToURL:(NSURL *)url
 {
