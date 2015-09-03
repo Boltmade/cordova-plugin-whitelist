@@ -106,6 +106,10 @@
  - (BOOL)shouldOverrideLoadWithRequest:(NSURLRequest*)request navigationType:(int)type
  {
     NSURL *url = request.URL;
+    if (![[request mainDocumentURL] isEqual: [request URL]]) {
+      // This is an iFrame, which is fine
+      return YES;
+    }
     if ([self.whitelist URLIsAllowed:url]) {
      return NO;
     } else {
